@@ -5,7 +5,8 @@
 //  Created by Andrew Edwards on 11/16/18.
 //
 
-import NIOHTTP1
+import NIO
+import HTTP
 
 public protocol GoogleCloudError: Error {}
 

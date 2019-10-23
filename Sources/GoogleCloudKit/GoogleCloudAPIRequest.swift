@@ -7,9 +7,7 @@
 
 import Foundation
 import NIO
-import NIOFoundationCompat
-import NIOHTTP1
-import AsyncHTTPClient
+import HTTP
 
 public protocol GoogleCloudAPIRequest: class {
     var refreshableToken: OAuthRefreshable { get }
@@ -18,6 +16,7 @@ public protocol GoogleCloudAPIRequest: class {
     var responseDecoder: JSONDecoder { get }
     var currentToken: OAuthAccessToken? { get set }
     var tokenCreatedTime: Date? { get set }
+    var eventLoopGroup: EventLoopGroup { get }
     
     /// As part of an API request this returns a valid OAuth token to use with any of the GoogleAPIs.
     /// - Parameter closure: The closure to be executed with the valid access token.

@@ -5,7 +5,7 @@
 //  Created by Andrew Edwards on 4/15/18.
 //
 
-import JWTKit
+import JWT
 
 /// The payload for requesting an OAuth token to make API calls to Google APIs.
 /// https://developers.google.com/identity/protocols/OAuth2ServiceAccount#authorizingrequests

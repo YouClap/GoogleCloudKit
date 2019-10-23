@@ -5,11 +5,9 @@
 //  Created by Andrew Edwards on 11/15/18.
 //
 
-import NIO
-import NIOFoundationCompat
-import NIOHTTP1
-import AsyncHTTPClient
 import Foundation
+import NIO
+import HTTP
 
 /// [Reference](https://cloud.google.com/compute/docs/access/create-enable-service-accounts-for-instances#applications)
 public class OAuthComputeEngineAppEngineFlex: OAuthRefreshable {
@@ -23,30 +21,21 @@ public class OAuthComputeEngineAppEngineFlex: OAuthRefreshable {
     init(serviceAccount: String = "default", httpClient: HTTPClient) {
         self.serviceAccount = serviceAccount
         self.httpClient = httpClient
+
         decoder.keyDecodingStrategy = .convertFromSnakeCase
     }
     
     public func refresh() -> EventLoopFuture<OAuthAccessToken> {
-        do {
-            let headers: HTTPHeaders = ["Metadata-Flavor": "Google"]
-            let request = try HTTPClient.Request(url: serviceAccountTokenURL, method: .GET, headers: headers)
-            
-            return httpClient.execute(request: request).flatMap { response in
-                
-                guard var byteBuffer = response.body,
-                    let responseData = byteBuffer.readData(length: byteBuffer.readableBytes),
-                    response.status == .ok else {
-                        return self.httpClient.eventLoopGroup.next().makeFailedFuture(OauthRefreshError.noResponse(response.status))
-                }
-                
-                do {
-                    return self.httpClient.eventLoopGroup.next().makeSucceededFuture(try self.decoder.decode(OAuthAccessToken.self, from: responseData))
-                } catch {
-                    return self.httpClient.eventLoopGroup.next().makeFailedFuture(error)
-                }
+        let headers: HTTPHeaders = ["Metadata-Flavor": "Google"]
+
+        let request = HTTPRequest(method: .POST, url: GoogleOAuthTokenUrl, headers: headers)
+
+        return httpClient.send(request).map { response in
+            guard response.status == .ok, let responseData = response.body.data else {
+                throw OauthRefreshError.noResponse(response.status)
             }
-        } catch {
-            return httpClient.eventLoopGroup.next().makeFailedFuture(error)
+
+            return try self.decoder.decode(OAuthAccessToken.self, from: responseData)
         }
     }
 }

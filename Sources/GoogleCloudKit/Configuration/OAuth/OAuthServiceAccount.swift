@@ -5,51 +5,58 @@
 //  Created by Andrew Edwards on 4/15/18.
 //
 
-import JWTKit
+import Crypto
+import JWT
+import HTTP
 import NIO
-import NIOHTTP1
-import AsyncHTTPClient
-import Foundation
+
+public enum OAuthServiceAccountError: GoogleCloudError {
+    case escapeToken(String)
+}
 
 public class OAuthServiceAccount: OAuthRefreshable {
     let httpClient: HTTPClient
     let credentials: GoogleServiceAccountCredentials
     let scope: String
+
     private let decoder = JSONDecoder()
+    private let eventLoopGroup: EventLoopGroup
     
-    init(credentials: GoogleServiceAccountCredentials, scopes: [GoogleCloudAPIScope], httpClient: HTTPClient) {
+    init(credentials: GoogleServiceAccountCredentials, scopes: [GoogleCloudAPIScope], httpClient: HTTPClient, eventLoopGroup: EventLoopGroup) {
         self.credentials = credentials
         self.scope = scopes.map { $0.value }.joined(separator: " ")
         self.httpClient = httpClient
+        self.eventLoopGroup = eventLoopGroup
+
         decoder.keyDecodingStrategy = .convertFromSnakeCase
     }
 
     // Google Documentation for this approach: https://developers.google.com/identity/protocols/OAuth2ServiceAccount
     public func refresh() -> EventLoopFuture<OAuthAccessToken> {
+        let headers: HTTPHeaders = ["Content-Type": "application/x-www-form-urlencoded"]
+
         do {
-            let headers: HTTPHeaders = ["Content-Type": "application/x-www-form-urlencoded"]
             let token = try generateJWT()
-            let body: HTTPClient.Body = .string("grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=\(token)"
-                                        .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")
-            let request = try HTTPClient.Request(url: GoogleOAuthTokenUrl, method: .POST, headers: headers, body: body)
-            
-            return httpClient.execute(request: request).flatMap { response in
-                
-                guard var byteBuffer = response.body,
-                let responseData = byteBuffer.readData(length: byteBuffer.readableBytes),
-                response.status == .ok else {
-                    return self.httpClient.eventLoopGroup.next().makeFailedFuture(OauthRefreshError.noResponse(response.status))
-                }
-                
-                do {
-                    return self.httpClient.eventLoopGroup.next().makeSucceededFuture(try self.decoder.decode(OAuthAccessToken.self, from: responseData))
-                } catch {
-                    return self.httpClient.eventLoopGroup.next().makeFailedFuture(error)
-                }
+
+            guard
+                let bodyString = "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=\(token)"
+                    .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+            else {
+                throw OAuthServiceAccountError.escapeToken(token)
             }
-            
+
+            let body = HTTPBody(string: bodyString)
+            let request = HTTPRequest(method: .POST, url: GoogleOAuthTokenUrl, headers: headers, body: body)
+
+            return httpClient.send(request).map { response in
+                guard response.status == .ok, let responseData = response.body.data else {
+                    throw OauthRefreshError.noResponse(response.status)
+                }
+
+                return try self.decoder.decode(OAuthAccessToken.self, from: responseData)
+            }
         } catch {
-            return httpClient.eventLoopGroup.next().makeFailedFuture(error)
+            return eventLoopGroup.next().newFailedFuture(error: error)
         }
     }
 
@@ -59,6 +66,7 @@ public class OAuthServiceAccount: OAuthRefreshable {
                                    aud: AudienceClaim(value: GoogleOAuthTokenAudience),
                                    exp: ExpirationClaim(value: Date().addingTimeInterval(3600)),
                                    iat: IssuedAtClaim(value: Date()))
+
         let privateKey = try RSAKey.private(pem: credentials.privateKey.data(using: .utf8, allowLossyConversion: true) ?? Data())
         let jwtData = try JWT(payload: payload).sign(using: .rs256(key: privateKey))
         
