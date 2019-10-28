@@ -20,11 +20,11 @@ public protocol GoogleCloudAPIRequest: class {
     
     /// As part of an API request this returns a valid OAuth token to use with any of the GoogleAPIs.
     /// - Parameter closure: The closure to be executed with the valid access token.
-    func withToken<GoogleCloudModel>(_ closure: @escaping (OAuthAccessToken) -> EventLoopFuture<GoogleCloudModel>) -> EventLoopFuture<GoogleCloudModel>
+    func withToken<GoogleCloudModel>(_ closure: @escaping (OAuthAccessToken) throws -> EventLoopFuture<GoogleCloudModel>) -> EventLoopFuture<GoogleCloudModel>
 }
 
 extension GoogleCloudAPIRequest {
-    public func withToken<GoogleCloudModel>(_ closure: @escaping (OAuthAccessToken) -> EventLoopFuture<GoogleCloudModel>) -> EventLoopFuture<GoogleCloudModel> {
+    public func withToken<GoogleCloudModel>(_ closure: @escaping (OAuthAccessToken) throws -> EventLoopFuture<GoogleCloudModel>) -> EventLoopFuture<GoogleCloudModel> {
         guard let token = currentToken,
             let created = tokenCreatedTime,
             refreshableToken.isFresh(token: token, created: created) else {
@@ -32,10 +32,14 @@ extension GoogleCloudAPIRequest {
                 self.currentToken = newToken
                 self.tokenCreatedTime = Date()
 
-                return closure(newToken)
+                return try closure(newToken)
             }
         }
 
-        return closure(token)
+        do {
+            return try closure(token)
+        } catch {
+            return eventLoopGroup.next().newFailedFuture(error: error)
+        }
     }
 }
