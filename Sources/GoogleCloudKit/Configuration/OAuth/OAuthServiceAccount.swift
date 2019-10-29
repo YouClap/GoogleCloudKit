@@ -20,13 +20,13 @@ public class OAuthServiceAccount: OAuthRefreshable {
     let scope: String
 
     private let decoder = JSONDecoder()
-    private let eventLoopGroup: EventLoopGroup
+    private let eventLoop: EventLoop
     
-    init(credentials: GoogleServiceAccountCredentials, scopes: [GoogleCloudAPIScope], httpClient: HTTPClient, eventLoopGroup: EventLoopGroup) {
+    init(credentials: GoogleServiceAccountCredentials, scopes: [GoogleCloudAPIScope], httpClient: HTTPClient, eventLoop: EventLoop) {
         self.credentials = credentials
         self.scope = scopes.map { $0.value }.joined(separator: " ")
         self.httpClient = httpClient
-        self.eventLoopGroup = eventLoopGroup
+        self.eventLoop = eventLoop
 
         decoder.keyDecodingStrategy = .convertFromSnakeCase
     }
@@ -56,7 +56,7 @@ public class OAuthServiceAccount: OAuthRefreshable {
                 return try self.decoder.decode(OAuthAccessToken.self, from: responseData)
             }
         } catch {
-            return eventLoopGroup.next().newFailedFuture(error: error)
+            return eventLoop.newFailedFuture(error: error)
         }
     }
 

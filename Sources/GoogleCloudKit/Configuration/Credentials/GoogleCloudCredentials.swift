@@ -76,21 +76,21 @@ public class OAuthCredentialLoader {
         credentialFilePath: String,
         config: GoogleCloudAPIConfiguration,
         client: HTTPClient,
-        eventLoopGroup: EventLoopGroup) throws -> OAuthRefreshable {
+        eventLoop: EventLoop) throws -> OAuthRefreshable {
         
         // Check Service account first.
         if let credentials = try? GoogleServiceAccountCredentials(fromFilePath: credentialFilePath) {
             return OAuthServiceAccount(credentials: credentials,
                                        scopes: config.scope,
                                        httpClient: client,
-                                       eventLoopGroup: eventLoopGroup)
+                                       eventLoop: eventLoop)
         }
 
         if let credentials = try? GoogleServiceAccountCredentials(fromJsonString: credentialFilePath) {
             return OAuthServiceAccount(credentials: credentials,
                                        scopes: config.scope,
                                        httpClient: client,
-                                       eventLoopGroup: eventLoopGroup)
+                                       eventLoop: eventLoop)
         }
         
         

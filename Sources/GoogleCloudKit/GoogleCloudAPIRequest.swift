@@ -16,7 +16,7 @@ public protocol GoogleCloudAPIRequest: class {
     var responseDecoder: JSONDecoder { get }
     var currentToken: OAuthAccessToken? { get set }
     var tokenCreatedTime: Date? { get set }
-    var eventLoopGroup: EventLoopGroup { get }
+    var eventLoop: EventLoop { get }
     
     /// As part of an API request this returns a valid OAuth token to use with any of the GoogleAPIs.
     /// - Parameter closure: The closure to be executed with the valid access token.
@@ -39,7 +39,7 @@ extension GoogleCloudAPIRequest {
         do {
             return try closure(token)
         } catch {
-            return eventLoopGroup.next().newFailedFuture(error: error)
+            return eventLoop.newFailedFuture(error: error)
         }
     }
 }
