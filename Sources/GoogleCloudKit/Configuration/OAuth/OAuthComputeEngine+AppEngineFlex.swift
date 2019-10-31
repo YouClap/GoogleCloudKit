@@ -7,7 +7,7 @@
 
 import Foundation
 import NIO
-import HTTP
+import NIOHTTP1
 
 /// [Reference](https://cloud.google.com/compute/docs/access/create-enable-service-accounts-for-instances#applications)
 public class OAuthComputeEngineAppEngineFlex: OAuthRefreshable {
@@ -28,10 +28,15 @@ public class OAuthComputeEngineAppEngineFlex: OAuthRefreshable {
     public func refresh() -> EventLoopFuture<OAuthAccessToken> {
         let headers: HTTPHeaders = ["Metadata-Flavor": "Google"]
 
-        let request = HTTPRequest(method: .POST, url: GoogleOAuthTokenUrl, headers: headers)
+        guard let url = URL(string: GoogleOAuthTokenUrl) else {
+            return httpClient.eventLoop.newFailedFuture(
+                error: OAuthApplicationDefaultError.failedToCreateURL(GoogleOAuthTokenUrl))
+        }
 
-        return httpClient.send(request).map { response in
-            guard response.status == .ok, let responseData = response.body.data else {
+        let request = HTTPRequest(method: .POST, url: url, headers: headers)
+
+        return httpClient.send(request: request).map { response in
+            guard response.status == .ok, let responseData = response.body else {
                 throw OauthRefreshError.noResponse(response.status)
             }
 

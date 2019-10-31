@@ -6,7 +6,7 @@
 //
 
 import NIO
-import HTTP
+import NIOHTTP1
 
 public protocol GoogleCloudError: Error {}
 

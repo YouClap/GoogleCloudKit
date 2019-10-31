@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import HTTP
 import NIO
 
 /// Loads credentials from `~/.config/gcloud/application_default_credentials.json`

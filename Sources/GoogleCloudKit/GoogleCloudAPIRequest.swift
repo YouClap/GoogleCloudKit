@@ -7,7 +7,6 @@
 
 import Foundation
 import NIO
-import HTTP
 
 public protocol GoogleCloudAPIRequest: class {
     var refreshableToken: OAuthRefreshable { get }

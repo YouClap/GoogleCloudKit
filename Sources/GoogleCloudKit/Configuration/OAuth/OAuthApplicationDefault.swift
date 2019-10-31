@@ -6,7 +6,12 @@
 //
 
 import Foundation
-import HTTP
+import NIO
+import NIOHTTP1
+
+public enum OAuthApplicationDefaultError: GoogleCloudError {
+    case failedToCreateURL(String)
+}
 
 public class OAuthApplicationDefault: OAuthRefreshable {
     let httpClient: HTTPClient
@@ -31,11 +36,16 @@ public class OAuthApplicationDefault: OAuthRefreshable {
             &grant_type=refresh_token
         """
 
-        let body = HTTPBody(string: bodyString)
-        let request = HTTPRequest(method: .POST, url: GoogleOAuthTokenUrl, headers: headers, body: body)
+        guard let url = URL(string: GoogleOAuthTokenUrl) else {
+            return httpClient.eventLoop.newFailedFuture(
+                error: OAuthApplicationDefaultError.failedToCreateURL(GoogleOAuthTokenUrl))
+        }
 
-        return httpClient.send(request).map { response in
-            guard response.status == .ok, let responseData = response.body.data else {
+        let body = Data(bodyString.utf8)
+        let request = HTTPRequest(method: .POST, url: url, headers: headers, body: body)
+
+        return httpClient.send(request: request).map { response in
+            guard response.status == .ok, let responseData = response.body else {
                 throw OauthRefreshError.noResponse(response.status)
             }
 
