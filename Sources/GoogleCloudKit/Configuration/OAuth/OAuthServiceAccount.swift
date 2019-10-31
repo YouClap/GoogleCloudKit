@@ -16,8 +16,8 @@ public enum OAuthServiceAccountError: GoogleCloudError {
 
 public class OAuthServiceAccount: OAuthRefreshable {
     let httpClient: HTTPClient
-    let credentials: GoogleServiceAccountCredentials
-    let scope: String
+    public let credentials: GoogleServiceAccountCredentials
+    public let scope: String
 
     private let decoder = JSONDecoder()
     private let eventLoop: EventLoop
