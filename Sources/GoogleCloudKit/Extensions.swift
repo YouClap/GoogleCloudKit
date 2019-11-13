@@ -7,7 +7,10 @@
 
 import Foundation
 
-public protocol GoogleCloudModel: Codable {}
+public typealias GoogleCloudModelDecodable = Decodable
+public typealias GoogleCloudModelEncodable = Encodable
+
+public typealias GoogleCloudModel = GoogleCloudModelDecodable & GoogleCloudModelEncodable
 
 extension Dictionary {
     
